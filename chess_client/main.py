@@ -1,15 +1,21 @@
 import sys
 import os
+
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine
-from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal
+from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal, pyqtProperty
+from chess_server.crud import db_login
+from chess_utils.player import Player
 
 class ChessBackend(QObject):
+    userChanged = pyqtSignal()
+
     # Définir un signal pour transmettre le résultat de l'authentification
     loginResult = pyqtSignal(bool, arguments=['success'])
-    
+
     def __init__(self):
         super().__init__()
+        self._user = None
     
     @pyqtSlot()
     def jouer(self):
@@ -24,10 +30,17 @@ class ChessBackend(QObject):
         
         # Ici vous pourriez implémenter la logique d'authentification réelle
         # Pour l'exemple, nous allons considérer que la connexion réussit si le nom d'utilisateur n'est pas vide
-        success = len(username) > 0
+        success, self._user = db_login(username, password)
+
         
         # Émettre le signal avec le résultat
         self.loginResult.emit(success)
+        self.userChanged.emit()
+    
+    @pyqtProperty(str, notify=userChanged)
+    def user(self):
+        return self._user
+        
 
 def qml_loader():
     # Création de l'application

@@ -15,6 +15,7 @@ Rectangle {
         function onLoginResult(success) {
             console.log("Résultat de connexion reçu: " + success)
             if (success) {
+                stackView.pop()
                 console.log("Connexion réussie")
                 errorMessage.visible = false
                 // Ici vous pouvez rediriger vers une autre page après connexion

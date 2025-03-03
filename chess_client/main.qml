@@ -33,7 +33,8 @@ ApplicationWindow {
                 Layout.maximumWidth: 400
                 
                 Text {
-                    text: "Chess Game"
+                    id: userText
+                    text: backend.user.username
                     font.pixelSize: 24
                     font.bold: true
                     Layout.alignment: Qt.AlignHCenter
@@ -59,6 +60,12 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+    }
+    Connections {
+        target: backend
+        onUserChanged: {
+            userText.text = backend.user.username
         }
     }
 }
