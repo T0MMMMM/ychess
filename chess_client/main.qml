@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import ChessTypes 1.0
 
 ApplicationWindow {
     id: mainWindow
@@ -34,9 +35,20 @@ ApplicationWindow {
                 
                 Text {
                     id: userText
-                    text: backend.user.username
+                    // Liaison directe qui se met à jour automatiquement
+                    text: backend.isLoggedIn ? "Welcome, " + backend.user.username : "Please log in"
                     font.pixelSize: 24
                     font.bold: true
+                    Layout.alignment: Qt.AlignHCenter
+                }
+                
+                Text {
+                    visible: backend.isLoggedIn
+                    // Liaison directe aux propriétés qui se met à jour automatiquement
+                    text: "ELO: " + backend.user.elo + 
+                          " | Wins: " + backend.user.wins + 
+                          " | Losses: " + backend.user.losses
+                    font.pixelSize: 16
                     Layout.alignment: Qt.AlignHCenter
                 }
                 
@@ -51,21 +63,18 @@ ApplicationWindow {
                 }
                 
                 Button {
-                    text: "Connexion"
+                    text: backend.isLoggedIn ? "Déconnexion" : "Connexion"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
                     onClicked: {
-                        console.log("Bouton Connexion cliqué")
-                        stackView.push("login.qml", {"stackView": stackView})
+                        if (backend.isLoggedIn) {
+                            backend.logout()
+                        } else {
+                            stackView.push("login.qml", {"stackView": stackView})
+                        }
                     }
                 }
             }
-        }
-    }
-    Connections {
-        target: backend
-        onUserChanged: {
-            userText.text = backend.user.username
         }
     }
 }

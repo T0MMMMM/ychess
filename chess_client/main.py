@@ -2,20 +2,19 @@ import sys
 import os
 
 from PyQt6.QtGui import QGuiApplication
-from PyQt6.QtQml import QQmlApplicationEngine
+from PyQt6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal, pyqtProperty
 from chess_server.crud import db_login
 from chess_utils.player import Player
 
 class ChessBackend(QObject):
-    userChanged = pyqtSignal()
-
-    # Définir un signal pour transmettre le résultat de l'authentification
-    loginResult = pyqtSignal(bool, arguments=['success'])
+    # Ces deux signaux sont nécessaires mais pour des raisons différentes:
+    userChanged = pyqtSignal()  # Pour les liaisons QML automatiques
+    loginResult = pyqtSignal(bool, arguments=['success'])  # Pour la navigation explicite
 
     def __init__(self):
         super().__init__()
-        self._user = None
+        self._user = Player()
     
     @pyqtSlot()
     def jouer(self):
@@ -28,23 +27,35 @@ class ChessBackend(QObject):
         # En production, ne jamais afficher les mots de passe en clair dans les logs
         print(f"Mot de passe (longueur: {len(password)}): {password[:1]}****")
         
-        # Ici vous pourriez implémenter la logique d'authentification réelle
-        # Pour l'exemple, nous allons considérer que la connexion réussit si le nom d'utilisateur n'est pas vide
-        success, self._user = db_login(username, password)
-
+        success, user = db_login(username, password)
+        self._user = user if success else Player()
         
         # Émettre le signal avec le résultat
         self.loginResult.emit(success)
         self.userChanged.emit()
+        
+    @pyqtSlot()
+    def logout(self):
+        print("Déconnexion")
+        self._user = Player()
+        self.userChanged.emit()
     
-    @pyqtProperty(str, notify=userChanged)
+    # Use Player as the return type now that we properly register it
+    @pyqtProperty(Player, notify=userChanged)
     def user(self):
         return self._user
         
+    @pyqtProperty(bool, notify=userChanged)
+    def isLoggedIn(self):
+        return self._user.username != ""
 
 def qml_loader():
     # Création de l'application
     app = QGuiApplication(sys.argv)
+    
+    # Register the Player type with QML before creating the engine
+    # This enables exposing Player objects directly to QML
+    qmlRegisterType(Player, "ChessTypes", 1, 0, "Player")
     
     # Création du moteur QML
     engine = QQmlApplicationEngine()
