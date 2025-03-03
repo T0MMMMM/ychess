@@ -1,10 +1,5 @@
 # Projet Jeu d'Échecs avec Matchmaking
 
-## Architecture du Projet
-- Module `chess-common` : Modèles et DTOs partagés
-- Module `chess-server` : Serveur de matchmaking Spring Boot
-- Module `chess-client` : Application bureau JavaFX
-
 ## Fonctionnalités à Implémenter
 
 ### 1. Système de Matchmaking
@@ -43,18 +38,3 @@
 - [ ] Protocol WebSocket
 - [ ] Gestion des événements en temps réel
 - [ ] Sécurisation des échanges
-
-## Technologies Utilisées
-- Java 17
-- Spring Boot 3.1.5
-- JavaFX
-- WebSocket
-- JPA/Hibernate
-- Base de données H2
-
-## Planning de Développement
-1. Phase 1 : Architecture de base
-2. Phase 2 : Implémentation du jeu d'échecs
-3. Phase 3 : Système de matchmaking
-4. Phase 4 : Interface utilisateur
-5. Phase 5 : Tests et optimisation
