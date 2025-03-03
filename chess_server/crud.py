@@ -12,18 +12,7 @@ def get_player_by_id(player_id):
     if row:
         # Create Player object with specific parameters instead of unpacking
         row_dict = dict(row)
-        return Player(
-            id=row_dict.get("id", 0),
-            username=row_dict.get("username", ""),
-            password_hash=row_dict.get("password_hash", ""),
-            email=row_dict.get("email", ""),
-            elo=row_dict.get("elo", 0),
-            matches_played=row_dict.get("matches_played", 0),
-            wins=row_dict.get("wins", 0),
-            losses=row_dict.get("losses", 0),
-            registration_date=row_dict.get("registration_date", None),
-            last_login=row_dict.get("last_login", None)
-        )
+        return row_dict
     return None
 
 def db_login(username, password):
@@ -39,18 +28,7 @@ def db_login(username, password):
         if password == row["password_hash"]:
             # Create Player object with named parameters
             row_dict = dict(row)
-            return (True, Player(
-                id=row_dict.get("id", 0),
-                username=row_dict.get("username", ""),
-                password_hash=row_dict.get("password_hash", ""),
-                email=row_dict.get("email", ""),
-                elo=row_dict.get("elo", 0),
-                matches_played=row_dict.get("matches_played", 0),
-                wins=row_dict.get("wins", 0),
-                losses=row_dict.get("losses", 0),
-                registration_date=row_dict.get("registration_date", None),
-                last_login=row_dict.get("last_login", None)
-            ))
+            return (True, row_dict)
         return (False, None)
     return (False, None)
 

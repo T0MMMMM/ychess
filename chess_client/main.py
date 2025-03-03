@@ -1,10 +1,10 @@
 import sys
 import os
+import requests
 
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal, pyqtProperty
-from chess_server.crud import db_login
 from chess_utils.player import Player
 
 class ChessBackend(QObject):
@@ -15,6 +15,7 @@ class ChessBackend(QObject):
     def __init__(self):
         super().__init__()
         self._user = Player()
+        self.server_url = "http://localhost:5000/api"
     
     @pyqtSlot()
     def jouer(self):
@@ -27,13 +28,37 @@ class ChessBackend(QObject):
         # En production, ne jamais afficher les mots de passe en clair dans les logs
         print(f"Mot de passe (longueur: {len(password)}): {password[:1]}****")
         
-        success, user = db_login(username, password)
-        self._user = user if success else Player()
+        try:
+            response = requests.post(f'{self.server_url}/login', 
+                                    json={'username': username, 'password': password})
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data['success']:
+                    player_data = data['player']
+                    self._user = Player(
+                        id=player_data.get('id', 0),
+                        username=player_data.get('username', ''),
+                        password_hash='',  # Don't store password hash on client
+                        email=player_data.get('email', ''),
+                        elo=player_data.get('elo', 0),
+                        matches_played=player_data.get('matches_played', 0),
+                        wins=player_data.get('wins', 0),
+                        losses=player_data.get('losses', 0),
+                        registration_date=player_data.get('registration_date'),
+                        last_login=player_data.get('last_login')
+                    )
+                    self.loginResult.emit(True)
+                    self.userChanged.emit()
+                    return
+        except Exception as e:
+            print(f"Login error: {e}")
         
-        # Émettre le signal avec le résultat
-        self.loginResult.emit(success)
+        # If we get here, login failed
+        self._user = Player()
+        self.loginResult.emit(False)
         self.userChanged.emit()
-        
+    
     @pyqtSlot()
     def logout(self):
         print("Déconnexion")
