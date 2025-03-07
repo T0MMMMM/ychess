@@ -58,7 +58,7 @@ ApplicationWindow {
                     Layout.preferredHeight: 50
                     onClicked: {
                         console.log("Bouton Jouer cliqué")
-                        backend.jouer()
+                        backend.play()
                     }
                 }
                 

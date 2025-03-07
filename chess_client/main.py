@@ -18,16 +18,26 @@ class ChessBackend(QObject):
         self.server_url = "http://localhost:5000/api"
     
     @pyqtSlot()
-    def jouer(self):
-        print("Fonction jouer appelée depuis Python")
-        # Ajoutez ici votre logique pour le bouton Jouer
+    def play(self):
+        if self._user.id == 0:
+            print("Vous devez être connecté pour jouer")
+            return
+        try: 
+            response = requests.post(f'{self.server_url}/play', json={'user': self._user.to_dict()})
+            if response.status_code == 200:
+                data = response.json()
+                if data['success']:
+                    print("Joueur ajouté à la liste")
+        except Exception as e:
+            print(f"Erreur lors de la tentative de connexion: {e}")
+            
     
     @pyqtSlot(str, str)
     def login(self, username, password):
         print(f"Tentative de connexion avec username: {username}")
         # En production, ne jamais afficher les mots de passe en clair dans les logs
         print(f"Mot de passe (longueur: {len(password)}): {password[:1]}****")
-        
+        print(self.server_url)
         try:
             response = requests.post(f'{self.server_url}/login', 
                                     json={'username': username, 'password': password})

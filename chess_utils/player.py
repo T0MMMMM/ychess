@@ -17,6 +17,19 @@ class Player(QObject):
         self._losses = losses
         self._registration_date = registration_date
         self._last_login = last_login
+
+    def to_dict(self):
+        return {
+            "id": self._id,
+            "username": self._username,
+            "email": self._email,
+            "elo": self._elo,
+            "matches_played": self._matches_played,
+            "wins": self._wins,
+            "losses": self._losses,
+            "registration_date": self._registration_date,
+            "last_login": self._last_login
+        }
     
     # Define properties using getters and setters with pyqtProperty
     @pyqtProperty(int, notify=dataChanged)
