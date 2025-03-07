@@ -19,37 +19,16 @@ Rectangle {
             Layout.alignment: Qt.AlignHCenter
         }
 
-        ProgressBar {
-            id: progressBar
-            running: true
-            indeterminate: true
-            Layout.fillWidth: true
-            Layout.preferredHeight: 20
-        }
 
         Button {
             text: "Annuler"
             Layout.fillWidth: true
             Layout.preferredHeight: 50
             onClicked: {
-                // Logique pour annuler la recherche
+                backend.cancelMatchmaking()
                 stackView.pop() // Fermer la page d'attente
             }
         }
     }
 
-    // Pour simuler un délai de recherche (remplacer par la logique réelle)
-    Timer {
-        id: matchTimer
-        interval: 5000 // Délai de 5 secondes avant de trouver un match
-        running: false
-        repeat: false
-        onTriggered: {
-            stackView.push("Match trouvé!") // Remplacez cela par l'écran suivant ou la logique
-        }
-    }
-
-    Component.onCompleted: {
-        matchTimer.start() // Démarrer le timer au démarrage de la page
-    }
 }

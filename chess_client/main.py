@@ -68,6 +68,20 @@ class ChessBackend(QObject):
         self._user = Player()
         self.loginResult.emit(False)
         self.userChanged.emit()
+
+    @pyqtSlot()
+    def cancelMatchmaking(self):
+        print("Matchmaking annulé")
+        try: 
+            response = requests.post(f'{self.server_url}/disconnect', json={'user': self._user.to_dict()})
+            if response.status_code == 200:
+                data = response.json()
+                if data['success']:
+                    print("Joueur enlevé de la liste")
+        except Exception as e:
+            print(f"Erreur lors de la tentative de connexion: {e}")
+            
+
     
     @pyqtSlot()
     def logout(self):

@@ -59,6 +59,10 @@ ApplicationWindow {
                     onClicked: {
                         console.log("Bouton Jouer cliqué")
                         backend.play()
+                        if (backend.isLoggedIn) {
+                            stackView.push("waiting.qml", {"stackView": stackView})
+                        }
+
                     }
                 }
                 

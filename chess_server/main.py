@@ -47,7 +47,16 @@ def play():
    # else:
     #    return jsonify({"success": False, "message": "Invalid credentials"}), 401
     
-  
+@app.route('/api/disconnect', methods=['POST'])
+def disconnect():
+    data = request.json
+    user = data.get('user')
+    if user in users_in_file:
+        users_in_file.remove(user)
+    print(users_in_file)
+    return jsonify({"success": True, "message": "User removed to list"})
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
