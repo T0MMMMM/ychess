@@ -1,5 +1,7 @@
+import time
 from flask import Flask, request, jsonify
 from chess_server.crud import db_login, get_user_by_id
+import threading
 
 app = Flask(__name__)
 
@@ -56,7 +58,21 @@ def disconnect():
     print(users_in_file)
     return jsonify({"success": True, "message": "User removed to list"})
 
+def matchmaking():
+    if len(users_in_file) >= 2:
+        player1 = users_in_file.pop()
+        player2 = users_in_file.pop()
+    else:
+        print("Matchmaking failed")
 
+
+def matchmaking_loop():
+    while True:
+        time.sleep(5)  # Vérifier toutes les 5 secondes
+        matchmaking()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    matchmaking_thread = threading.Thread(target=matchmaking_loop)
+    matchmaking_thread.daemon = True  # Le thread s'arrêtera quand le programme principal s'arrête
+    matchmaking_thread.start()
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
