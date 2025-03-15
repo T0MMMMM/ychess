@@ -70,6 +70,9 @@ def disconnect():
 def matchmaking():
     if len(users_file) >= 2:
         print("Matchmaking successful")
+        for user_id, sid in users_file.items():
+            socketio.emit("match", {"message": user_id}, room=sid)
+        users_file.clear()
     else:
         print("Matchmaking failed")
         print(users_file)

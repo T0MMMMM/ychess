@@ -6,6 +6,7 @@ import socketio
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal, pyqtProperty
+
 from chess_utils.player import Player
 
 class ChessBackend(QObject):
@@ -32,6 +33,11 @@ class ChessBackend(QObject):
         @self.sio.on('play_confirmation')
         def on_play_confirmation(data):
             print(f"Confirmation du serveur : {data['message']}")
+
+        @self.sio.on("match")
+        def on_match(data):
+            print(f"Match found ! : {data['message']}")
+            #self.changePage.emit("main")
 
         try:
             self.sio.connect("http://localhost:5000")  # Connexion au serveur WebSocket
