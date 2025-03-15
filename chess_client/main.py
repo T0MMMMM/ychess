@@ -1,6 +1,7 @@
 import sys
 import os
 import requests
+import socketio
 
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine, qmlRegisterType
@@ -16,6 +17,27 @@ class ChessBackend(QObject):
         super().__init__()
         self._user = Player()
         self.server_url = "http://localhost:5000/api"
+        self.sio = socketio.Client()
+
+        @self.sio.on('connect')
+        def on_connect():
+            print("Connecté au serveur WebSocket")  # Vérifie que ça s'affiche
+            print("Register envoyé")  # Vérifie que ça passe
+
+        @self.sio.on('disconnect')
+        def on_disconnect():
+            print("Déconnecté du serveur WebSocket")
+
+
+        @self.sio.on('play_confirmation')
+        def on_play_confirmation(data):
+            print(f"Confirmation du serveur : {data['message']}")
+
+        try:
+            self.sio.connect("http://localhost:5000")  # Connexion au serveur WebSocket
+        except Exception as e:
+            print(f"Erreur de connexion WebSocket : {e}")
+
     
     @pyqtSlot()
     def play(self):
@@ -60,6 +82,8 @@ class ChessBackend(QObject):
                     )
                     self.loginResult.emit(True)
                     self.userChanged.emit()
+                    self.sio.emit("register", {'user': self._user.to_dict()})
+
                     return
         except Exception as e:
             print(f"Login error: {e}")
