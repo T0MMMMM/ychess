@@ -30,6 +30,7 @@ class ChessBackend(QObject):
     userChanged = pyqtSignal()
     loginResult = pyqtSignal(bool, arguments=['success'])
     chessGameChanged = pyqtSignal()  # Add this signal for the chessGame property
+    matchFound = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -55,6 +56,7 @@ class ChessBackend(QObject):
         @self.sio.on("match")
         def on_match(data):
             print(f"Match found ! : {data['message']}")
+            self.matchFound.emit(data)
             #self.changePage.emit("main")
 
         try:

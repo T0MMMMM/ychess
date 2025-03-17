@@ -29,6 +29,14 @@ ApplicationWindow {
         anchors.fill: parent
         initialItem: homeScreen
     }
+
+    Connections {
+        target: backend
+        function onMatchFound(matchData) {
+            console.log("Match found, pushing game page")
+            stackView.push("game.qml", { matchData: matchData })
+        }
+    }
     
     // Composant pour l'écran d'accueil
     Component {
