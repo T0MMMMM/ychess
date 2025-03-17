@@ -55,7 +55,7 @@ class ChessBackend(QObject):
 
         @self.sio.on("match")
         def on_match(data):
-            print(f"Match found ! : {data['message']}")
+            print(f"Match found ! : match number = {data['game_id']}, your color = {data['color']}, your opponent = {data['opponent_id']}")
             self.matchFound.emit(data)
             #self.changePage.emit("main")
 

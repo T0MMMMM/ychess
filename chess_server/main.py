@@ -1,7 +1,7 @@
 import time
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
-from chess_server.crud import db_login, get_user_by_id
+from chess_server.crud import add_move_to_match, create_match, db_login, get_user_by_id
 import threading
 
 app = Flask(__name__)
@@ -10,6 +10,18 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # Permet les connexions WebS
 
 users_file = {}
 users_server = {}
+
+def find_SID_by_user_id(user_id):
+    return users_server.get(user_id)
+
+
+@socketio.on("move")
+def handle_move(data):
+    match_id = data["match_id"]
+    move = data["move"]
+    opponent_id = data["opponent_id"]
+    add_move_to_match(match_id, move)
+    socketio.emit("move", move, room=find_SID_by_user_id(opponent_id))
 
 
 @socketio.on('connect')
@@ -70,12 +82,30 @@ def disconnect():
 def matchmaking():
     if len(users_file) >= 2:
         print("Matchmaking successful")
+        list = []
         for user_id, sid in users_file.items():
-            socketio.emit("match", {"message": user_id}, room=sid)
+            list.append((user_id, sid))
+        print(list)
+        new_match(list)
         users_file.clear()
+
     else:
         print("Matchmaking failed")
         print(users_file)
+
+def new_match(tab):
+    print(tab)
+    user1_id = tab[0][0]
+    user2_id = tab[1][0]
+    match_id = create_match(user1_id, user2_id)
+    socketio.emit("match", {
+            "match_id": match_id,
+            "color": "white",
+            "opponent_id": user2_id }, room=tab[0][1])
+    socketio.emit("match", {
+            "match_id": match_id,
+            "color": "black",
+            "opponent_id": user1_id }, room=tab[1][1])
 
 
 
