@@ -13,9 +13,19 @@ ApplicationWindow {
     // Occuper tout l'écran
     visibility: "Maximized"
     
+    // Dark theme colors
+    property color darkBackground: "#2e2e2e"
+    property color darkSurface: "#383838"
+    property color darkText: "#ffffff"
+    property color darkAccent: "#5f9ea0"  // Teal-like accent color
+    
+    // Set the application background color
+    color: darkBackground
+    
     // StackView pour la gestion des écrans
     StackView {
         id: stackView
+        objectName: "stackView"  // Added objectName for access from Python
         anchors.fill: parent
         initialItem: homeScreen
     }
@@ -25,7 +35,7 @@ ApplicationWindow {
         id: homeScreen
         
         Rectangle {
-            color: "#f5f5f5"
+            color: mainWindow.darkBackground
             
             ColumnLayout {
                 anchors.centerIn: parent
@@ -39,6 +49,7 @@ ApplicationWindow {
                     text: backend.isLoggedIn ? "Welcome, " + backend.user.username : "Please log in"
                     font.pixelSize: 24
                     font.bold: true
+                    color: mainWindow.darkText
                     Layout.alignment: Qt.AlignHCenter
                 }
                 
@@ -49,6 +60,7 @@ ApplicationWindow {
                           " | Wins: " + backend.user.wins + 
                           " | Losses: " + backend.user.losses
                     font.pixelSize: 16
+                    color: mainWindow.darkText
                     Layout.alignment: Qt.AlignHCenter
                 }
                 
@@ -56,9 +68,22 @@ ApplicationWindow {
                     text: "Jouer"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
+                    background: Rectangle {
+                        color: mainWindow.darkAccent
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        font: parent.font
+                        color: mainWindow.darkText
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                     onClicked: {
                         console.log("Bouton Jouer cliqué")
-                        backend.jouer()
+                        if (backend.isLoggedIn) {
+                            stackView.push("game.qml", {"stackView": stackView})
+                        }
                     }
                 }
                 
@@ -66,6 +91,19 @@ ApplicationWindow {
                     text: backend.isLoggedIn ? "Déconnexion" : "Connexion"
                     Layout.fillWidth: true
                     Layout.preferredHeight: 50
+                    background: Rectangle {
+                        color: mainWindow.darkSurface
+                        radius: 4
+                        border.color: mainWindow.darkAccent
+                        border.width: 1
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        font: parent.font
+                        color: mainWindow.darkText
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                     onClicked: {
                         if (backend.isLoggedIn) {
                             backend.logout()

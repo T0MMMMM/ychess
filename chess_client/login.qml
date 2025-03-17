@@ -4,7 +4,15 @@ import QtQuick.Layouts 1.15
 
 Rectangle {
     property var stackView
-    color: "#f5f5f5"
+    
+    // Dark theme colors
+    property color darkBackground: "#2e2e2e"
+    property color darkSurface: "#383838"
+    property color darkText: "#ffffff"
+    property color darkSecondaryText: "#bbbbbb"
+    property color darkAccent: "#5f9ea0"  // Teal-like accent color
+    
+    color: darkBackground
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -14,30 +22,60 @@ Rectangle {
 
         Text {
             text: "Connexion"
-            font.pixelSize: 24
+            font.pixelSize: 28
             font.bold: true
+            color: darkText
             Layout.alignment: Qt.AlignHCenter
         }
 
         TextField {
             id: usernameField
             placeholderText: "Nom d'utilisateur"
+            placeholderTextColor: "#888888"
+            color: darkText
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
+            Layout.preferredHeight: 50
+            background: Rectangle {
+                color: Qt.rgba(0, 0, 0, 0.3)
+                border.color: "#555555"
+                border.width: 1
+                radius: 6
+            }
         }
 
         TextField {
             id: passwordField
             placeholderText: "Mot de passe"
+            placeholderTextColor: "#888888"
+            color: darkText
             echoMode: TextInput.Password
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
+            Layout.preferredHeight: 50
+            background: Rectangle {
+                color: Qt.rgba(0, 0, 0, 0.3)
+                border.color: "#555555"
+                border.width: 1
+                radius: 6
+            }
         }
 
         Button {
             text: "Se connecter"
             Layout.fillWidth: true
             Layout.preferredHeight: 50
+            Layout.topMargin: 20
+            background: Rectangle {
+                color: darkAccent
+                radius: 6
+            }
+            contentItem: Text {
+                text: parent.text
+                font.pixelSize: 16
+                font.bold: true
+                color: darkText
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
             onClicked: {
                 backend.login(usernameField.text, passwordField.text)
             }
@@ -47,6 +85,20 @@ Rectangle {
             text: "Retour"
             Layout.fillWidth: true
             Layout.preferredHeight: 50
+            Layout.topMargin: 10
+            background: Rectangle {
+                color: darkSurface
+                radius: 6
+                border.color: darkAccent
+                border.width: 1
+            }
+            contentItem: Text {
+                text: parent.text
+                font.pixelSize: 16
+                color: darkText
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
             onClicked: {
                 stackView.pop()
             }
@@ -69,10 +121,11 @@ Rectangle {
     Text {
         id: errorMessage
         text: "Échec de la connexion. Veuillez réessayer."
-        color: "red"
+        color: "#ff5252"
+        font.pixelSize: 14
         visible: false
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 20
+        anchors.bottomMargin: 30
         anchors.horizontalCenter: parent.horizontalCenter
     }
 }
