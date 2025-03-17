@@ -1,6 +1,7 @@
 import sys
 import os
 import requests
+from pathlib import Path
 import socketio
 
 from PyQt6.QtGui import QGuiApplication
@@ -8,16 +9,33 @@ from PyQt6.QtQml import QQmlApplicationEngine, qmlRegisterType
 from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal, pyqtProperty
 
 from chess_utils.player import Player
+from chess_client.utils import download_chess_pieces
+from chess_client.models.chess_game_model import ChessGameModel
+
+def ensure_chess_pieces_exist():
+    """Make sure chess piece images are available"""
+    assets_dir = Path(__file__).parent / "assets" / "pieces"
+    
+    # Check if directory and a few pieces exist
+    if not assets_dir.exists() or not (assets_dir / "w_king.png").exists():
+        print("Chess piece images not found. Downloading...")
+        download_chess_pieces()
+    else:
+        print("Chess piece images found.")
+
+
 
 class ChessBackend(QObject):
-    # Ces deux signaux sont nécessaires mais pour des raisons différentes:
-    userChanged = pyqtSignal()  # Pour les liaisons QML automatiques
-    loginResult = pyqtSignal(bool, arguments=['success'])  # Pour la navigation explicite
+    # Add signals
+    userChanged = pyqtSignal()
+    loginResult = pyqtSignal(bool, arguments=['success'])
+    chessGameChanged = pyqtSignal()  # Add this signal for the chessGame property
 
     def __init__(self):
         super().__init__()
         self._user = Player()
         self.server_url = "http://localhost:5000/api"
+        self._chess_game_model = ChessGameModel()
         self.sio = socketio.Client()
 
         @self.sio.on('connect')
@@ -59,6 +77,10 @@ class ChessBackend(QObject):
         except Exception as e:
             print(f"Erreur lors de la tentative de connexion: {e}")
             
+    @pyqtProperty(ChessGameModel, notify=chessGameChanged)  # Add the notify signal here
+    def chessGame(self):
+        """Get the chess game model"""
+        return self._chess_game_model
     
     @pyqtSlot(str, str)
     def login(self, username, password):
@@ -128,13 +150,18 @@ class ChessBackend(QObject):
     def isLoggedIn(self):
         return self._user.username != ""
 
+
+
+
 def qml_loader():
     # Création de l'application
     app = QGuiApplication(sys.argv)
     
     # Register the Player type with QML before creating the engine
-    # This enables exposing Player objects directly to QML
     qmlRegisterType(Player, "ChessTypes", 1, 0, "Player")
+    
+    # Register our ChessGameModel with QML
+    qmlRegisterType(ChessGameModel, "ChessTypes", 1, 0, "ChessGameModel")
     
     # Création du moteur QML
     engine = QQmlApplicationEngine()
@@ -160,6 +187,7 @@ def qml_loader():
     return app.exec()
 
 def main():
+    ensure_chess_pieces_exist()
     sys.exit(qml_loader())
 
 if __name__ == "__main__":

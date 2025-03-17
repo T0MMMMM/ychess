@@ -16,7 +16,6 @@
   - [ ] Roque
   - [ ] Prise en passant
   - [ ] Promotion des pions
-- [ ] Validation des coups
 - [ ] Historique des coups
 - [ ] Timer de jeu
 
