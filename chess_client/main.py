@@ -1,6 +1,7 @@
 import sys
 import os
 import requests
+import chess  # Ajouter cet import
 from pathlib import Path
 import socketio
 
@@ -11,6 +12,7 @@ from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal, pyqtProperty
 from chess_utils.player import Player
 from chess_client.utils import download_chess_pieces
 from chess_client.models.chess_game_model import ChessGameModel
+from chess_engine.game import WebSocketChessGame
 
 def ensure_chess_pieces_exist():
     """Make sure chess piece images are available"""
@@ -37,17 +39,21 @@ class ChessBackend(QObject):
         self._user = Player()
         self.server_url = "http://localhost:5000/api"
         self._chess_game_model = ChessGameModel()
-        self.sio = socketio.Client()
-
+        
+        # Créer une seule instance de socketio.Client
+        self.sio = socketio.Client(logger=True, engineio_logger=True)
+        self._chess_game = WebSocketChessGame(self.sio)
+        
+        # Configurer les handlers avant la connexion
         @self.sio.on('connect')
         def on_connect():
-            print("Connecté au serveur WebSocket")  # Vérifie que ça s'affiche
-            print("Register envoyé")  # Vérifie que ça passe
+            print("Connecté au serveur WebSocket")
+            if self._user.id != 0:
+                self.sio.emit("register", {'user': self._user.to_dict()})
 
         @self.sio.on('disconnect')
         def on_disconnect():
             print("Déconnecté du serveur WebSocket")
-
 
         @self.sio.on('play_confirmation')
         def on_play_confirmation(data):
@@ -55,14 +61,39 @@ class ChessBackend(QObject):
 
         @self.sio.on("match")
         def on_match(data):
-            print(f"Match found ! : {data['message']}")
+            print("Match found event received:", data)
+            game_id = data.get('match_id')
+            player_color = data.get('color')
+            opponent_id = data.get('opponent_id')
+            
+            print(f"Setting up game: id={game_id}, color={player_color}, opponent={opponent_id}")
+            self._chess_game.set_game_details(game_id, player_color, opponent_id)
+            self.chessGameChanged.emit()
+            print("Emitting matchFound signal")
             self.matchFound.emit(data)
-            #self.changePage.emit("main")
+        
+        @self.sio.on("move")
+        def on_move(data):
+            print(f"Move received: {data}")
+            self._chess_game.receive_opponent_move(
+                data.get('from'),
+                data.get('to')
+            )
+            self.chessGameChanged.emit()
 
+        # Supprimer le handler de résignation
+        # @self.sio.on("opponent_resigned")
+        # def on_opponent_resigned(data):
+        #     print("Opponent resigned")
+        #     self._chess_game.handle_opponent_resignation()
+
+        # Se connecter au serveur
         try:
-            self.sio.connect("http://localhost:5000")  # Connexion au serveur WebSocket
+            self.sio.connect('http://localhost:5000', wait_timeout=10)
+            print("Connecté au serveur WebSocket")
         except Exception as e:
             print(f"Erreur de connexion WebSocket : {e}")
+            self.sio = None
 
     
     @pyqtSlot()
@@ -71,18 +102,29 @@ class ChessBackend(QObject):
             print("Vous devez être connecté pour jouer")
             return
         try: 
+            # Réinitialiser l'état du jeu avant de chercher une nouvelle partie
+            self._chess_game._board = chess.Board()
+            self._chess_game.boardChanged.emit()
+
             response = requests.post(f'{self.server_url}/play', json={'user': self._user.to_dict()})
             if response.status_code == 200:
                 data = response.json()
                 if data['success']:
-                    print("Joueur ajouté à la liste")
+                    print("En attente d'un adversaire...")
         except Exception as e:
-            print(f"Erreur lors de la tentative de connexion: {e}")
+            print(f"Erreur lors de la recherche de partie: {e}")
             
-    @pyqtProperty(ChessGameModel, notify=chessGameChanged)  # Add the notify signal here
+    @pyqtProperty(WebSocketChessGame, notify=chessGameChanged)
     def chessGame(self):
-        """Get the chess game model"""
-        return self._chess_game_model
+        """Get the chess game"""
+        return self._chess_game
+    
+    @pyqtSlot(str, str)
+    def makeMove(self, from_square, to_square):
+        success = self._chess_game.make_move(from_square, to_square)
+        if success:
+            self.chessGameChanged.emit()
+        return success
     
     @pyqtSlot(str, str)
     def login(self, username, password):
@@ -112,7 +154,11 @@ class ChessBackend(QObject):
                     )
                     self.loginResult.emit(True)
                     self.userChanged.emit()
-                    self.sio.emit("register", {'user': self._user.to_dict()})
+                    # Modification de l'émission du register
+                    if self.sio and self.sio.connected:
+                        self.sio.emit("register", {'user': self._user.to_dict()})
+                    else:
+                        print("Socket.IO non connecté")
 
                     return
         except Exception as e:
@@ -156,33 +202,33 @@ class ChessBackend(QObject):
 
 
 def qml_loader():
-    # Création de l'application
     app = QGuiApplication(sys.argv)
     
-    # Register the Player type with QML before creating the engine
+    # Register types
     qmlRegisterType(Player, "ChessTypes", 1, 0, "Player")
-    
-    # Register our ChessGameModel with QML
     qmlRegisterType(ChessGameModel, "ChessTypes", 1, 0, "ChessGameModel")
+    qmlRegisterType(WebSocketChessGame, "ChessTypes", 1, 0, "WebSocketChessGame")
     
-    # Création du moteur QML
     engine = QQmlApplicationEngine()
     
-    # Ajout du répertoire de l'application au chemin de recherche QML
-    # Cela permet au StackView de trouver login.qml
-    engine.addImportPath(os.path.dirname(os.path.abspath(__file__)))
+    # Set the correct import paths
+    qml_path = Path(__file__).parent
+    engine.addImportPath(str(qml_path))
     
-    # Instanciation du backend
+    # Set the root context property for assets path
+    engine.rootContext().setContextProperty(
+        "assetsPath", 
+        str(qml_path / "assets")
+    )
+    
+    # Create backend and expose to QML
     backend = ChessBackend()
-    
-    # Exposition du backend dans le contexte QML
     engine.rootContext().setContextProperty("backend", backend)
     
-    # Charger la page principale
+    # Load main QML file
     qml_file = os.path.join(os.path.dirname(__file__), 'main.qml')
     engine.load(QUrl.fromLocalFile(qml_file))
     
-    # Vérification que le fichier QML a bien été chargé
     if not engine.rootObjects():
         sys.exit(-1)
     

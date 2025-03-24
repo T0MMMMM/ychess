@@ -4,6 +4,63 @@ import QtQuick.Layouts 1.15
 import ChessTypes 1.0
 
 Rectangle {
+    id: gameScreen
+    objectName: "gameScreen"
+    
+    // Propriétés de base avec valeurs par défaut
+    property int labelSize: 24
+    property var matchData: ({})
+    property string selectedSquare: ""
+    property var possibleMoves: []
+    property bool boardFlipped: false
+    property bool gameStarted: false
+    property bool isMyTurn: false
+    property string playerColor: "white"
+
+    // Un seul Timer pour l'initialisation
+    Timer {
+        id: gameStateTimer
+        interval: 100
+        running: true
+        repeat: false
+        onTriggered: {
+            if (backend && backend.chessGame) {
+                // Inverser l'échiquier pour les noirs
+                boardFlipped = backend.chessGame.player_color === "black"
+                gameStarted = backend.chessGame._match_id !== null
+                isMyTurn = backend.chessGame.is_my_turn
+                playerColor = backend.chessGame.player_color
+                console.log("Board flipped for black player:", boardFlipped)
+                chessboard.repeater.model = 64
+            }
+        }
+    }
+
+    // Une seule connexion au backend
+    Connections {
+        target: backend.chessGame
+        
+        function onBoardChanged() {
+            selectedSquare = ""
+            possibleMoves = []
+            isMyTurn = backend.chessGame.is_my_turn
+            chessboard.repeater.model = 64
+        }
+    }
+
+    Component.onCompleted: {
+        console.log("Game view created with details:")
+        console.log("Player color:", backend.chessGame.player_color)
+        console.log("Is my turn:", backend.chessGame.is_my_turn)
+        console.log("Board flipped:", boardFlipped)
+        console.log("Game details:", JSON.stringify({
+            color: backend.chessGame.player_color,
+            isMyTurn: backend.chessGame.is_my_turn,
+            matchId: backend.chessGame._match_id
+        }))
+        console.log("Initial piece positions:", JSON.stringify(backend.chessGame.piece_positions))
+    }
+
     // Dark theme colors
     property color darkBackground: "#1e1e1e"  // Darker background for modern look
     property color darkSurface: "#2d2d2d"
@@ -18,42 +75,41 @@ Rectangle {
     property color highlightSquare: "#bbcc44"  // Square highlight color
     property color possibleMoveIndicator: "#66bbcc44"
     
-    // Track selections
-    property int selectedRow: -1
-    property int selectedCol: -1
-    property var possibleMoves: []
-    
     color: darkBackground
     property var stackView
+
+    // Function to convert square name to coordinates
+    function squareToCoordinates(square) {
+        if (!square || square.length !== 2) return null;
+        
+        const col = square.charCodeAt(0) - 97; // 'a' is 97 in ASCII
+        const row = 8 - parseInt(square.charAt(1));
+        
+        return { row: row, col: col };
+    }
     
-    // Helper function to get piece image source based on piece symbol
-    function getPieceImage(symbol) {
-        if (!symbol) return "";
+    // Function to convert coordinates to square name
+    function coordinatesToSquare(row, col) {
+        // Inverser l'échiquier pour le joueur noir
+        const actualRow = boardFlipped ? (7 - row) : row;
+        const actualCol = boardFlipped ? (7 - col) : col;
         
-        const color = symbol === symbol.toLowerCase() ? "b" : "w";
-        let pieceName;
+        const file = String.fromCharCode(97 + actualCol);
+        const rank = 8 - actualRow;
         
-        switch(symbol.toLowerCase()) {
-            case "p": pieceName = "pawn"; break;
-            case "r": pieceName = "rook"; break;
-            case "n": pieceName = "knight"; break;
-            case "b": pieceName = "bishop"; break;
-            case "q": pieceName = "queen"; break;
-            case "k": pieceName = "king"; break;
-            default: return "";
-        }
-        
-        return "assets/pieces/" + color + "_" + pieceName + ".png";
+        return `${file}${rank}`;
+    }
+    
+    // Helper function to get piece image source based on piece name
+    function getPieceImage(piece) {
+        if (!piece) return "";
+        return "assets/pieces/" + piece + ".png";
     }
     
     // Check if a position is in the possible moves list
     function isValidMove(row, col) {
-        for (let i = 0; i < possibleMoves.length; i++) {
-            if (possibleMoves[i][0] === row && possibleMoves[i][1] === col) {
-                return true;
-            }
-        }
-        return false;
+        const square = coordinatesToSquare(row, col);
+        return possibleMoves.includes(square);
     }
     
     RowLayout {
@@ -81,7 +137,10 @@ Rectangle {
                     Layout.fillWidth: true
                     
                     Text {
-                        text: "Game in Progress - " + backend.chessGame.currentPlayer + "'s move"
+                        text: {
+                            if (!gameStarted) return "Waiting for opponent..."
+                            return isMyTurn ? "Your turn" : "Opponent's turn"
+                        }
                         font.pixelSize: 20
                         font.bold: true
                         color: darkText
@@ -117,12 +176,11 @@ Rectangle {
                         // Calculate sizes based on available space
                         property int availableSize: Math.min(parent.width, parent.height) 
                         property int boardSize: availableSize - (labelSize * 2)
-                        property int labelSize: 24
                         
                         width: boardSize + (labelSize * 2)
                         height: boardSize + (labelSize * 2)
                         
-                        // Row labels (numbers 8-1) - Fix the centering
+                        // Row labels (numbers 8-1) 
                         Column {
                             x: 0
                             y: labelSize
@@ -138,8 +196,8 @@ Rectangle {
                                     color: "transparent"
                                     
                                     Text {
-                                        anchors.centerIn: parent  // This centers both horizontally and vertically
-                                        text: 8 - index
+                                        anchors.centerIn: parent
+                                        text: boardFlipped ? (index + 1) : (8 - index)
                                         color: darkText
                                         font.pixelSize: boardContainer.labelSize * 0.6
                                     }
@@ -147,25 +205,34 @@ Rectangle {
                             }
                         }
                         
-                        // Chess Board using Python model
+                        // Chess Board 
                         Grid {
                             id: chessboard
                             rows: 8
                             columns: 8
-                            x: boardContainer.labelSize
-                            y: boardContainer.labelSize
+                            anchors {
+                                left: parent.left
+                                leftMargin: labelSize
+                                top: parent.top
+                                topMargin: labelSize
+                            }
                             
                             property int cellSize: boardContainer.boardSize / 8
                             width: cellSize * 8
                             height: cellSize * 8
                             
+                            property alias repeater: boardRepeater
+
                             Repeater {
+                                id: boardRepeater
                                 model: 64
                                 
                                 Rectangle {
-                                    property int row: Math.floor(index / 8)
-                                    property int col: index % 8
-                                    property bool isSelected: row === selectedRow && col === selectedCol
+                                    // Inverser le calcul des coordonnées pour le joueur noir
+                                    property int row: boardFlipped ? (7 - Math.floor(index / 8)) : Math.floor(index / 8)
+                                    property int col: boardFlipped ? (7 - (index % 8)) : (index % 8)
+                                    property string square: coordinatesToSquare(row, col)
+                                    property bool isSelected: square === selectedSquare
                                     property bool isPossibleMove: isValidMove(row, col)
                                     
                                     width: chessboard.cellSize
@@ -173,19 +240,23 @@ Rectangle {
                                     
                                     // Square coloring based on selection state
                                     color: isSelected ? highlightSquare : 
-                                          isPossibleMove ? possibleMoveIndicator :
-                                          (row + col) % 2 === 0 ? lightSquare : darkSquare
+                                           isPossibleMove ? possibleMoveIndicator :
+                                           (row + col) % 2 === 0 ? lightSquare : darkSquare
                                     
-                                    // Piece image from Python model
                                     Image {
                                         id: pieceImage
                                         anchors.fill: parent
                                         anchors.margins: parent.width * 0.05
                                         source: {
-                                            // Get piece symbol from Python model
-                                            const board = backend.chessGame.board;
-                                            const symbol = board[row][col];
-                                            return getPieceImage(symbol);
+                                            if (!backend || !backend.chessGame || !backend.chessGame.piece_positions) {
+                                                return ""
+                                            }
+                                            const positions = backend.chessGame.piece_positions;
+                                            const piece = positions.find(p => p.square === square);
+                                            if (piece) {
+                                                return getPieceImage(piece.piece);
+                                            }
+                                            return "";
                                         }
                                         fillMode: Image.PreserveAspectFit
                                         visible: source !== ""
@@ -205,32 +276,26 @@ Rectangle {
                                     // Mouse area for piece selection and movement
                                     MouseArea {
                                         anchors.fill: parent
+                                        enabled: gameStarted && isMyTurn
                                         onClicked: {
-                                            // If we have a selected piece and this is a valid move
-                                            if (selectedRow !== -1 && selectedCol !== -1 && isPossibleMove) {
-                                                // Move the piece using Python model
-                                                backend.chessGame.movePiece(row, col);
-                                                selectedRow = -1;
-                                                selectedCol = -1;
+                                            console.log("Click - My turn:", isMyTurn)
+                                            console.log("My color:", backend.chessGame.player_color)
+                                            console.log("Clicked square:", square, "isMyTurn:", isMyTurn)
+                                            console.log("Selected square:", selectedSquare)
+                                            console.log("Is valid source:", backend.chessGame.is_valid_move_source(square))
+                                            
+                                            if (selectedSquare && isPossibleMove) {
+                                                backend.makeMove(selectedSquare, square);
+                                                selectedSquare = "";
                                                 possibleMoves = [];
                                             } 
-                                            // If we're selecting a piece
+                                            else if (backend.chessGame.is_valid_move_source(square)) {
+                                                selectedSquare = square;
+                                                possibleMoves = backend.chessGame.get_legal_destinations(square);
+                                            } 
                                             else {
-                                                const board = backend.chessGame.board;
-                                                if (board[row][col]) {
-                                                    // Check if selection is valid (user can only select their pieces)
-                                                    if (backend.chessGame.selectPiece(row, col)) {
-                                                        selectedRow = row;
-                                                        selectedCol = col;
-                                                        // Get possible moves from Python
-                                                        possibleMoves = backend.chessGame.getPossibleMoves(row, col);
-                                                    }
-                                                } else {
-                                                    // Clicking on empty square outside of possible moves
-                                                    selectedRow = -1;
-                                                    selectedCol = -1;
-                                                    possibleMoves = [];
-                                                }
+                                                selectedSquare = "";
+                                                possibleMoves = [];
                                             }
                                         }
                                     }
@@ -251,7 +316,8 @@ Rectangle {
                                 Text {
                                     width: boardContainer.boardSize / 8
                                     height: boardContainer.labelSize
-                                    text: String.fromCharCode(97 + index)
+                                    // Inverser les lettres pour le joueur noir
+                                    text: String.fromCharCode(boardFlipped ? 104 - index : 97 + index)
                                     color: darkText
                                     font.pixelSize: boardContainer.labelSize * 0.6
                                     horizontalAlignment: Text.AlignHCenter
@@ -282,7 +348,10 @@ Rectangle {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
-                        onClicked: stackView.pop()
+                        onClicked: {
+                            backend.cancelMatchmaking();
+                            stackView.pop();
+                        }
                     }
                     
                     Item { Layout.fillWidth: true }
@@ -301,9 +370,8 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                         }
                         onClicked: {
-                            backend.chessGame.resetGame();
-                            selectedRow = -1;
-                            selectedCol = -1;
+                            backend.play();
+                            selectedSquare = "";
                             possibleMoves = [];
                         }
                     }
@@ -337,7 +405,9 @@ Rectangle {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
-                        onClicked: console.log("Resign clicked")
+                        onClicked: {
+                            console.log("Resign clicked")
+                        }
                     }
                 }
             }
@@ -519,7 +589,7 @@ Rectangle {
                                         }
                                         
                                         RoundButton {
-                                            text: "⟩"  // Right angle bracket as send icon
+                                            text: ">"  // Right angle bracket as send icon
                                             font.pixelSize: 18
                                             font.bold: true
                                             Layout.preferredHeight: 30
@@ -543,7 +613,7 @@ Rectangle {
                         }
                     }
                     
-                    // Game info tab - now using the Python model
+                    // Game info tab - now using WebSocket Chess Game
                     Item {
                         Rectangle {
                             anchors.fill: parent
@@ -575,7 +645,7 @@ Rectangle {
                                             
                                             Text {
                                                 anchors.centerIn: parent
-                                                text: "W"
+                                                text: backend.chessGame.player_color === "white" ? "W" : "B"
                                                 color: darkText
                                                 font.pixelSize: 24
                                                 font.bold: true
@@ -628,7 +698,7 @@ Rectangle {
                                             
                                             Text {
                                                 anchors.centerIn: parent
-                                                text: "B"
+                                                text: backend.chessGame.player_color === "white" ? "B" : "W"
                                                 color: darkText
                                                 font.pixelSize: 24
                                                 font.bold: true
@@ -662,7 +732,7 @@ Rectangle {
                                     }
                                 }
                                 
-                                // White captured pieces
+                                // Captured pieces for both players
                                 Rectangle {
                                     Layout.fillWidth: true
                                     height: 40
@@ -675,7 +745,7 @@ Rectangle {
                                         spacing: 5
                                         
                                         Text {
-                                            text: "Black captured: "
+                                            text: boardFlipped ? "White captured: " : "Black captured: "
                                             color: darkSecondaryText
                                             font.pixelSize: 14
                                         }
@@ -684,31 +754,11 @@ Rectangle {
                                             spacing: 4
                                             Layout.fillWidth: true
                                             
-                                            Repeater {
-                                                model: backend.chessGame.getCapturedPieces("white")  // Use the helper method
-                                                
-                                                Text {
-                                                    text: {
-                                                        // Map piece notations to Unicode symbols
-                                                        const symbols = {
-                                                            "P": "♟", "p": "♟",
-                                                            "R": "♜", "r": "♜",
-                                                            "N": "♞", "n": "♞",
-                                                            "B": "♝", "b": "♝",
-                                                            "Q": "♛", "q": "♛",
-                                                            "K": "♚", "k": "♚"
-                                                        };
-                                                        return symbols[modelData] || modelData;
-                                                    }
-                                                    color: "#bbbbbb"  // Gray for black pieces captured by white
-                                                    font.pixelSize: 20
-                                                }
-                                            }
+                                            // This will be populated when you implement getCapturedPieces
                                         }
                                     }
                                 }
                                 
-                                // Black captured pieces
                                 Rectangle {
                                     Layout.fillWidth: true
                                     height: 40
@@ -721,7 +771,7 @@ Rectangle {
                                         spacing: 5
                                         
                                         Text {
-                                            text: "White captured: "
+                                            text: boardFlipped ? "Black captured: " : "White captured: "
                                             color: darkSecondaryText
                                             font.pixelSize: 14
                                         }
@@ -730,31 +780,12 @@ Rectangle {
                                             spacing: 4
                                             Layout.fillWidth: true
                                             
-                                            Repeater {
-                                                model: backend.chessGame.getCapturedPieces("black")  // Use the helper method
-                                                
-                                                Text {
-                                                    text: {
-                                                        // Map piece notations to Unicode symbols
-                                                        const symbols = {
-                                                            "P": "♙", "p": "♙",
-                                                            "R": "♖", "r": "♖",
-                                                            "N": "♘", "n": "♘",
-                                                            "B": "♗", "b": "♗",
-                                                            "Q": "♕", "q": "♕",
-                                                            "K": "♔", "k": "♔"
-                                                        };
-                                                        return symbols[modelData] || modelData;
-                                                    }
-                                                    color: darkText
-                                                    font.pixelSize: 20
-                                                }
-                                            }
+                                            // This will be populated when you implement getCapturedPieces
                                         }
                                     }
                                 }
                                 
-                                // Game moves from Python model
+                                // Game moves
                                 Rectangle {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
@@ -778,17 +809,8 @@ Rectangle {
                                             Layout.fillHeight: true
                                             clip: true
                                             model: {
-                                                // Group moves into pairs for display
-                                                const moves = backend.chessGame.moves;
-                                                const result = [];
-                                                for (let i = 0; i < moves.length; i += 2) {
-                                                    result.push({
-                                                        moveNumber: Math.floor(i/2) + 1,
-                                                        white: moves[i] || "",
-                                                        black: i+1 < moves.length ? moves[i+1] : ""
-                                                    });
-                                                }
-                                                return result;
+                                                // When you implement the history feature
+                                                return [];
                                             }
                                             
                                             delegate: RowLayout {
@@ -826,17 +848,6 @@ Rectangle {
                     }
                 }
             }
-        }
-    }
-    
-    // Update when the model changes
-    Connections {
-        target: backend.chessGame
-        function onBoardChanged() {
-            // Reset selection when board changes
-            selectedRow = -1;
-            selectedCol = -1;
-            possibleMoves = [];
         }
     }
 }

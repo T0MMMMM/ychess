@@ -3,6 +3,8 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 Rectangle {
+    id: waitingScreen
+    objectName: "waitingScreen"  // Ajouter l'objectName
     property var stackView
     color: "#f5f5f5"
 
@@ -18,7 +20,6 @@ Rectangle {
             font.bold: true
             Layout.alignment: Qt.AlignHCenter
         }
-
 
         Button {
             text: "Annuler"

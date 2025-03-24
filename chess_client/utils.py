@@ -50,3 +50,20 @@ def download_chess_pieces():
             print(f"Error downloading {piece_name}: {e}")
     
     print("Chess piece download complete!")
+
+def ensure_chess_pieces_exist():
+    """Make sure chess piece images are available"""
+    assets_dir = Path(__file__).parent / "assets" / "pieces"
+    assets_dir.mkdir(parents=True, exist_ok=True)  # Create directories if they don't exist
+    
+    # Vérification et création du dossier assets/pieces s'il n'existe pas
+    if not assets_dir.exists() or not (assets_dir / "w_king.png").exists():
+        print("Chess piece images not found. Downloading...")
+        download_chess_pieces()
+        
+        # Vérification après téléchargement
+        if not (assets_dir / "w_king.png").exists():
+            print("Error: Failed to download chess pieces")
+            sys.exit(1)
+    else:
+        print("Chess piece images found")

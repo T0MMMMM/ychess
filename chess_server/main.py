@@ -1,15 +1,27 @@
 import time
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
-from chess_server.crud import db_login, get_user_by_id
+from chess_server.crud import add_move_to_match, create_match, db_login, get_user_by_id
 import threading
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")  # Permet les connexions WebSocket
-
+# Modifier la configuration de SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True, async_mode='threading')
 
 users_file = {}
 users_server = {}
+
+def find_SID_by_user_id(user_id):
+    return users_server.get(user_id)
+
+
+@socketio.on("move")
+def handle_move(data):
+    match_id = data["match_id"]
+    move = data["move"]
+    opponent_id = data["opponent_id"]
+    add_move_to_match(match_id, move)
+    socketio.emit("move", move, room=find_SID_by_user_id(opponent_id))
 
 
 @socketio.on('connect')
@@ -24,6 +36,18 @@ def handle_register(data):
     id = user.get("id")
     print(f"L'utilisateur {id} est enregistré avec SID {request.sid}")
     users_server[id] = request.sid
+
+@socketio.on("resign")
+def handle_resignation(data):
+    match_id = data["match_id"]
+    opponent_id = data["opponent_id"]
+    resigning_player = data["resigning_player"]
+    
+    # Émettre l'événement de résignation à l'adversaire
+    socketio.emit("opponent_resigned", {
+        "match_id": match_id,
+        "winner": "black" if resigning_player == "white" else "white"
+    }, room=find_SID_by_user_id(opponent_id))
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -70,12 +94,38 @@ def disconnect():
 def matchmaking():
     if len(users_file) >= 2:
         print("Matchmaking successful")
+        list = []
         for user_id, sid in users_file.items():
-            socketio.emit("match", {"message": user_id}, room=sid)
+            list.append((user_id, sid))
+        print(list)
+        new_match(list)
         users_file.clear()
+
     else:
         print("Matchmaking failed")
         print(users_file)
+
+def new_match(tab):
+    print("Creating new match between players:", tab)
+    user1_id = tab[0][0]
+    user2_id = tab[1][0]
+    match_id = create_match(user1_id, user2_id)
+    
+    # Premier joueur en blanc, second en noir
+    print(f"Player {user1_id} is white, {user2_id} is black")
+    
+    # Envoyer les détails du match aux joueurs
+    socketio.emit("match", {
+        "match_id": match_id,
+        "color": "white",  # Premier joueur est blanc
+        "opponent_id": user2_id 
+    }, room=tab[0][1])
+    
+    socketio.emit("match", {
+        "match_id": match_id,
+        "color": "black",  # Second joueur est noir
+        "opponent_id": user1_id 
+    }, room=tab[1][1])
 
 
 
@@ -88,4 +138,5 @@ if __name__ == '__main__':
     matchmaking_thread = threading.Thread(target=matchmaking_loop)
     matchmaking_thread.daemon = True  # Le thread s'arrêtera quand le programme principal s'arrête
     matchmaking_thread.start()
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    # Modifier le lancement du serveur
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)

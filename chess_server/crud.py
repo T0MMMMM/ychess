@@ -1,4 +1,7 @@
 import sqlite3
+import datetime
+
+from flask import json
 from chess_utils.player import Player
 
 def get_player_by_id(player_id):
@@ -56,3 +59,26 @@ def get_user_by_id(user_id):
             last_login=row_dict.get("last_login", None)
         )
     return None
+
+def create_match(player1_id, player2_id):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    
+    cursor.execute("INSERT INTO match (player1_id, player2_id, winner_id, start_time, end_time, status, moves) \
+                   VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                   (player1_id, player2_id, None, datetime.datetime.now(), None, "en cours", "[]"))  
+    match_id = cursor.lastrowid 
+    conn.commit()
+    conn.close()
+    return match_id
+
+def add_move_to_match(match_id, move):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT moves FROM match WHERE id = ?", (match_id,))
+    result = cursor.fetchone()
+    moves = json.loads(result[0]) if result[0] else []
+    moves.append(move)
+    cursor.execute("UPDATE match SET moves = ? WHERE id = ?", (json.dumps(moves), match_id))
+    conn.commit()
+    conn.close()

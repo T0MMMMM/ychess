@@ -28,16 +28,19 @@ ApplicationWindow {
         objectName: "stackView"  // Added objectName for access from Python
         anchors.fill: parent
         initialItem: homeScreen
-    }
 
-    Connections {
-        target: backend
-        function onMatchFound(matchData) {
-            console.log("Match found, pushing game page")
-            stackView.push("game.qml", { matchData: matchData })
+        // Remplacer l'ancien système de connexions par un seul gestionnaire
+        Connections {
+            target: backend
+            function onMatchFound(matchData) {
+                if (stackView.currentItem.objectName === "waitingScreen") {
+                    // Utiliser push avec une seule fois les paramètres
+                    stackView.push("game.qml", {"stackView": stackView})
+                }
+            }
         }
     }
-    
+
     // Composant pour l'écran d'accueil
     Component {
         id: homeScreen
