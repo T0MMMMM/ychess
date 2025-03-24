@@ -60,6 +60,17 @@ def get_user_by_id(user_id):
         )
     return None
 
+def get_elo_by_id(user_id):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT elo FROM player WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return row[0]
+    return None
+
 def create_match(player1_id, player2_id):
     conn = sqlite3.connect("chess_server/database.db")
     cursor = conn.cursor()

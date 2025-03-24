@@ -8,20 +8,20 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")  # Permet les connexions WebSocket
 
 
-users_file = {}
+users_file = []
 users_server = {}
 
 def find_SID_by_user_id(user_id):
     return users_server.get(user_id)
 
 
-@socketio.on("move")
+@socketio.on("move_server")
 def handle_move(data):
     match_id = data["match_id"]
     move = data["move"]
     opponent_id = data["opponent_id"]
     add_move_to_match(match_id, move)
-    socketio.emit("move", move, room=find_SID_by_user_id(opponent_id))
+    socketio.emit("move_client", move, room=find_SID_by_user_id(opponent_id))
 
 
 @socketio.on('connect')
@@ -69,7 +69,7 @@ def get_user(user_id):
 def play():
     data = request.json
     user = data.get('user')
-    users_file[user["id"]] = users_server.get(user["id"])
+    users_file.append(user["id"])
     return jsonify({"success": True, "message": "User added to list"})
     
 @app.route('/api/disconnect', methods=['POST'])
@@ -83,8 +83,8 @@ def matchmaking():
     if len(users_file) >= 2:
         print("Matchmaking successful")
         list = []
-        for user_id, sid in users_file.items():
-            list.append((user_id, sid))
+        for user_id in users_file:
+            list.append(user_id)
         print(list)
         new_match(list)
         users_file.clear()
