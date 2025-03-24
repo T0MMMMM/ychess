@@ -1,14 +1,15 @@
+from itertools import permutations
 import time
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
-from chess_server.crud import add_move_to_match, create_match, db_login, get_user_by_id
+from chess_server.crud import add_move_to_match, create_match, db_login, get_elo_by_id, get_user_by_id
 import threading
 
 app = Flask(__name__)
 # Modifier la configuration de SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True, async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=True, async_mode='threading')
 
-users_file = {}
+users_file = []
 users_server = {}
 
 def find_SID_by_user_id(user_id):
@@ -81,51 +82,85 @@ def get_user(user_id):
 def play():
     data = request.json
     user = data.get('user')
-    users_file[user["id"]] = users_server.get(user["id"])
+    users_file.append(user["id"])
     return jsonify({"success": True, "message": "User added to list"})
     
 @app.route('/api/disconnect', methods=['POST'])
 def disconnect():
     data = request.json
     user = data.get('user')
-    users_file.pop(user['id'])
+    users_file.remove(user['id'])
     return jsonify({"success": True, "message": "User removed to list"})
 
 def matchmaking():
-    if len(users_file) >= 2:
+    sort_by_elo()
+    matches = matchmaking_optimal()
+    if matches != None:
+        for match in matches:
+            new_match(match)
+        matches.clear()
         print("Matchmaking successful")
-        list = []
-        for user_id, sid in users_file.items():
-            list.append((user_id, sid))
-        print(list)
-        new_match(list)
-        users_file.clear()
-
     else:
-        print("Matchmaking failed")
-        print(users_file)
+        print("Pas assez de joueurs")
+
+
+
+def sort_by_elo():
+    for i in range(len(users_file)):
+        for j in range(len(users_file)-1):
+            if get_elo_by_id(users_file[i]) < get_elo_by_id(users_file[j]):
+                users_file[i], users_file[j] = users_file[j], users_file[i]
+
+
+def matchmaking_optimal():
+    if len(users_file) < 2:
+        return None  
+
+    best_match = None
+    min_total_gap: float = float('inf')
+
+    for perm in permutations(users_file):
+        total_gap = calcul_total_gap(perm)
+
+        if total_gap < min_total_gap:
+            min_total_gap = total_gap
+            best_match = [(perm[i], perm[i+1]) for i in range(0, len(perm) - 1, 2)]
+    return best_match
+
+
+def calcul_total_gap(perm):
+    total_gap = 0
+    for i in range(0, len(perm) - 1, 2):
+        joueur1, joueur2 = perm[i], perm[i + 1]
+        gap = abs(get_elo_by_id(joueur1) - get_elo_by_id(joueur2))  # Différence de niveau entre les deux joueurs
+        total_gap += gap  # On additionne cet écart au total
+    return total_gap
+
 
 def new_match(tab):
     print("Creating new match between players:", tab)
-    user1_id = tab[0][0]
-    user2_id = tab[1][0]
+    user1_id = tab[0]
+    user2_id = tab[1]
     match_id = create_match(user1_id, user2_id)
     
     # Premier joueur en blanc, second en noir
     print(f"Player {user1_id} is white, {user2_id} is black")
-    
+
     # Envoyer les détails du match aux joueurs
     socketio.emit("match", {
         "match_id": match_id,
         "color": "white",  # Premier joueur est blanc
         "opponent_id": user2_id 
-    }, room=tab[0][1])
+    }, room=find_SID_by_user_id(tab[0]))
     
     socketio.emit("match", {
         "match_id": match_id,
         "color": "black",  # Second joueur est noir
         "opponent_id": user1_id 
-    }, room=tab[1][1])
+    }, room=find_SID_by_user_id(tab[1]))
+
+    users_file.remove(user1_id)
+    users_file.remove(user2_id)
 
 
 
@@ -139,4 +174,4 @@ if __name__ == '__main__':
     matchmaking_thread.daemon = True  # Le thread s'arrêtera quand le programme principal s'arrête
     matchmaking_thread.start()
     # Modifier le lancement du serveur
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)

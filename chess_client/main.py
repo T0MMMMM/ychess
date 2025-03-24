@@ -22,8 +22,6 @@ def ensure_chess_pieces_exist():
     if not assets_dir.exists() or not (assets_dir / "w_king.png").exists():
         print("Chess piece images not found. Downloading...")
         download_chess_pieces()
-    else:
-        print("Chess piece images found.")
 
 
 
@@ -41,7 +39,7 @@ class ChessBackend(QObject):
         self._chess_game_model = ChessGameModel()
         
         # Créer une seule instance de socketio.Client
-        self.sio = socketio.Client(logger=True, engineio_logger=True)
+        self.sio = socketio.Client(logger=False, engineio_logger=True)
         self._chess_game = WebSocketChessGame(self.sio)
         
         # Configurer les handlers avant la connexion
@@ -61,7 +59,6 @@ class ChessBackend(QObject):
 
         @self.sio.on("match")
         def on_match(data):
-<<<<<<< HEAD
             print("Match found event received:", data)
             game_id = data.get('match_id')
             player_color = data.get('color')
@@ -71,9 +68,6 @@ class ChessBackend(QObject):
             self._chess_game.set_game_details(game_id, player_color, opponent_id)
             self.chessGameChanged.emit()
             print("Emitting matchFound signal")
-=======
-            print(f"Match found ! : match number = {data['game_id']}, your color = {data['color']}, your opponent = {data['opponent_id']}")
->>>>>>> server-sockets
             self.matchFound.emit(data)
         
         @self.sio.on("move")
@@ -85,16 +79,9 @@ class ChessBackend(QObject):
             )
             self.chessGameChanged.emit()
 
-        # Supprimer le handler de résignation
-        # @self.sio.on("opponent_resigned")
-        # def on_opponent_resigned(data):
-        #     print("Opponent resigned")
-        #     self._chess_game.handle_opponent_resignation()
-
         # Se connecter au serveur
         try:
             self.sio.connect('http://localhost:5000', wait_timeout=10)
-            print("Connecté au serveur WebSocket")
         except Exception as e:
             print(f"Erreur de connexion WebSocket : {e}")
             self.sio = None
