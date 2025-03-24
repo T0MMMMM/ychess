@@ -61,6 +61,7 @@ class ChessBackend(QObject):
 
         @self.sio.on("match")
         def on_match(data):
+<<<<<<< HEAD
             print("Match found event received:", data)
             game_id = data.get('match_id')
             player_color = data.get('color')
@@ -70,6 +71,9 @@ class ChessBackend(QObject):
             self._chess_game.set_game_details(game_id, player_color, opponent_id)
             self.chessGameChanged.emit()
             print("Emitting matchFound signal")
+=======
+            print(f"Match found ! : match number = {data['game_id']}, your color = {data['color']}, your opponent = {data['opponent_id']}")
+>>>>>>> server-sockets
             self.matchFound.emit(data)
         
         @self.sio.on("move")
