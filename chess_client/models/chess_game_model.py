@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot, QVariant
-from ..chess_engine.game import ChessGame
+from ..chess_engine.chess_game import ChessGame
 
 class ChessGameModel(QObject):
     """Chess game model for QML"""

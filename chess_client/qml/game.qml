@@ -17,6 +17,13 @@ Rectangle {
     property bool isMyTurn: false
     property string playerColor: "white"
 
+    // Property to receive stackView from parent
+    property var stackView
+    
+    // Properties to store game over information
+    property string dialogResult: ""
+    property string dialogDetails: ""
+
     // Un seul Timer pour l'initialisation
     Timer {
         id: gameStateTimer
@@ -27,10 +34,10 @@ Rectangle {
             if (backend && backend.chessGame) {
                 // Inverser l'échiquier pour les noirs
                 boardFlipped = backend.chessGame.player_color === "black"
-                gameStarted = backend.chessGame._match_id !== null
+                // Safely check if match_id exists and is not null
+                gameStarted = backend.chessGame.match_id !== null && backend.chessGame.match_id !== "None"
                 isMyTurn = backend.chessGame.is_my_turn
                 playerColor = backend.chessGame.player_color
-                console.log("Board flipped for black player:", boardFlipped)
                 chessboard.repeater.model = 64
             }
         }
@@ -44,21 +51,41 @@ Rectangle {
             selectedSquare = ""
             possibleMoves = []
             isMyTurn = backend.chessGame.is_my_turn
+            playerColor = backend.chessGame.player_color
+            
+            // Update boardFlipped whenever the board state changes
+            boardFlipped = playerColor === "black"
             chessboard.repeater.model = 64
+        }
+        
+        function onGameOver(winner, reason) {
+            console.log("Game over:", winner, reason)
+            let result = ""
+            let resultDetails = ""
+            
+            // Set result text based on winner
+            if (winner === "draw") {
+                result = "Game Drawn"
+                resultDetails = "The game ended in a draw by " + reason + "."
+            } else {
+                const playerWon = winner === playerColor
+                result = playerWon ? "Victory!" : "Defeat"
+                resultDetails = playerWon ? "You won by checkmate!" : "Your opponent won by checkmate."
+            }
+            
+            // Au lieu de charger la boîte de dialogue via un Loader,
+            // faire un push directement sur la stackView
+            stackView.push("components/GameOverDialog.qml", {
+                "parentStackView": stackView,
+                "result": result,
+                "details": resultDetails
+            });
         }
     }
 
     Component.onCompleted: {
-        console.log("Game view created with details:")
-        console.log("Player color:", backend.chessGame.player_color)
-        console.log("Is my turn:", backend.chessGame.is_my_turn)
-        console.log("Board flipped:", boardFlipped)
-        console.log("Game details:", JSON.stringify({
-            color: backend.chessGame.player_color,
-            isMyTurn: backend.chessGame.is_my_turn,
-            matchId: backend.chessGame._match_id
-        }))
-        console.log("Initial piece positions:", JSON.stringify(backend.chessGame.piece_positions))
+        // Ensure board is flipped right from the start if playing as black
+        boardFlipped = backend.chessGame.player_color === "black"
     }
 
     // Dark theme colors
@@ -72,11 +99,10 @@ Rectangle {
     // Chess.com board colors
     property color lightSquare: "#f0d9b5"  // Light squares (cream/tan)
     property color darkSquare: "#b58863"   // Dark squares (brown)
-    property color highlightSquare: "#bbcc44"  // Square highlight color
-    property color possibleMoveIndicator: "#66bbcc44"
+    property color highlightSquare: "#abebc680" // "#bbcc44"  // Square highlight color
+    property color possibleMoveIndicator: "#82e0ab80" // "#66bbcc44"
     
     color: darkBackground
-    property var stackView
 
     // Function to convert square name to coordinates
     function squareToCoordinates(square) {
@@ -85,25 +111,40 @@ Rectangle {
         const col = square.charCodeAt(0) - 97; // 'a' is 97 in ASCII
         const row = 8 - parseInt(square.charAt(1));
         
+        // Apply flipping for black player
+        if (boardFlipped) {
+            const flippedResult = { row: 7 - row, col: 7 - col };
+            return flippedResult;
+        }
+        
         return { row: row, col: col };
     }
     
     // Function to convert coordinates to square name
     function coordinatesToSquare(row, col) {
-        // Inverser l'échiquier pour le joueur noir
-        const actualRow = boardFlipped ? (7 - row) : row;
-        const actualCol = boardFlipped ? (7 - col) : col;
+        // Calculate actual algebraic notation
+        // When the board is flipped, we need to convert coordinates differently
+        let file, rank;
         
-        const file = String.fromCharCode(97 + actualCol);
-        const rank = 8 - actualRow;
+        if (boardFlipped) {
+            // We're already flipping row and col in the Rectangle properties
+            // so here we just do a regular conversion
+            file = String.fromCharCode(97 + col);
+            rank = 8 - row;
+        } else {
+            // Regular board
+            file = String.fromCharCode(97 + col);
+            rank = 8 - row;
+        }
         
-        return `${file}${rank}`;
+        const result = `${file}${rank}`;
+        return result;
     }
     
     // Helper function to get piece image source based on piece name
     function getPieceImage(piece) {
         if (!piece) return "";
-        return "assets/pieces/" + piece + ".png";
+        return "../assets/pieces/" + piece + ".png";
     }
     
     // Check if a position is in the possible moves list
@@ -252,7 +293,11 @@ Rectangle {
                                                 return ""
                                             }
                                             const positions = backend.chessGame.piece_positions;
-                                            const piece = positions.find(p => p.square === square);
+                                            
+                                            // Get the actual algebraic notation for this square
+                                            const actualSquareName = square;
+                                            const piece = positions.find(p => p.square === actualSquareName);
+                                            
                                             if (piece) {
                                                 return getPieceImage(piece.piece);
                                             }
@@ -262,15 +307,13 @@ Rectangle {
                                         visible: source !== ""
                                     }
                                     
-                                    // Possible move indicator
-                                    Rectangle {
-                                        visible: isPossibleMove && !pieceImage.visible
+                                    // Add debug text overlay to show square names for debugging
+                                    Text {
                                         anchors.centerIn: parent
-                                        width: parent.width * 0.3
-                                        height: width
-                                        radius: width / 2
-                                        color: possibleMoveIndicator
-                                        opacity: 0.8
+                                        text: square
+                                        color: "red"
+                                        font.pixelSize: 10
+                                        visible: false // Set to true to debug square names
                                     }
                                     
                                     // Mouse area for piece selection and movement
@@ -278,11 +321,17 @@ Rectangle {
                                         anchors.fill: parent
                                         enabled: gameStarted && isMyTurn
                                         onClicked: {
-                                            console.log("Click - My turn:", isMyTurn)
-                                            console.log("My color:", backend.chessGame.player_color)
-                                            console.log("Clicked square:", square, "isMyTurn:", isMyTurn)
-                                            console.log("Selected square:", selectedSquare)
-                                            console.log("Is valid source:", backend.chessGame.is_valid_move_source(square))
+                                            // First check if the backend and chessGame are available
+                                            if (!backend || !backend.chessGame) {
+                                                console.error("Backend or chessGame not available")
+                                                return;
+                                            }
+                                            
+                                            // Ensure is_valid_move_source exists
+                                            if (typeof backend.chessGame.is_valid_move_source !== "function") {
+                                                console.error("is_valid_move_source is not a function")
+                                                return;
+                                            }
                                             
                                             if (selectedSquare && isPossibleMove) {
                                                 backend.makeMove(selectedSquare, square);
@@ -305,10 +354,11 @@ Rectangle {
                         
                         // Column labels (letters a-h)
                         Row {
-                            x: boardContainer.labelSize
-                            y: boardContainer.labelSize + boardContainer.boardSize
+                            // Fix the x and y properties by using literals instead of possibly undefined values
+                            x: labelSize
+                            y: labelSize + boardContainer.boardSize
                             width: boardContainer.boardSize
-                            height: boardContainer.labelSize
+                            height: labelSize
                             
                             Repeater {
                                 model: 8
@@ -350,7 +400,10 @@ Rectangle {
                         }
                         onClicked: {
                             backend.cancelMatchmaking();
-                            stackView.pop();
+                            let sv = findStackView();
+                            if (sv) {
+                                sv.pop();
+                            }
                         }
                     }
                     

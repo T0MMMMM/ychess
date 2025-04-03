@@ -25,16 +25,16 @@ ApplicationWindow {
     // StackView pour la gestion des écrans
     StackView {
         id: stackView
-        objectName: "stackView"  // Added objectName for access from Python
+        objectName: "stackView"
         anchors.fill: parent
         initialItem: homeScreen
 
-        // Remplacer l'ancien système de connexions par un seul gestionnaire
+        // Restore previous connection that passes stackView as parameter
         Connections {
             target: backend
             function onMatchFound(matchData) {
                 if (stackView.currentItem.objectName === "waitingScreen") {
-                    // Utiliser push avec une seule fois les paramètres
+                    // Pass stackView as a property again
                     stackView.push("game.qml", {"stackView": stackView})
                 }
             }
