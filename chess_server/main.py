@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from chess_server.crud import (
     add_move_to_match, create_match, db_login, 
-    get_elo_by_id, get_user_by_id
+    get_elo_by_id, get_user_by_id, get_match_by_id, update_match_winner
 )
 
 app = Flask(__name__)
@@ -39,6 +39,19 @@ def handle_resignation(data):
     socketio.emit("opponent_resigned", {"match_id": match_id, "winner": winner}, room=find_SID_by_user_id(opponent_id))
 
 
+@socketio.on('game_over')
+def handle_game_over(data):
+    print(f"[Server] Fin de partie")
+    print("→ Données :", data)
+    print(data["winner"])
+    print(data["match_id"])
+    game_over(data)
+
+
+def game_over(data):
+    match = get_match_by_id(data["match_id"])
+    id_winner = match.player1_id if data["winner"] == "white" else match.player2_id
+    update_match_winner(match.id, id_winner)
 
 # -------------------------------- API Routes --------------------------------
 @app.route('/api/login', methods=['POST'])

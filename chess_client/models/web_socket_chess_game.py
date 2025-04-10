@@ -22,6 +22,8 @@ class WebSocketChessGame(QObject):
         self._is_my_turn = True
         self._match_id_value = None  # Changed attribute name to avoid conflict
         self._game_result = None  # Store the game result
+        self.gameOver.connect(self.send_game_result)
+
         print("Game initialized")
 
         # Delay signal emission until after initialization
@@ -57,6 +59,19 @@ class WebSocketChessGame(QObject):
         print(f"Game details set - color: {self._player_color}, is_my_turn: {self._is_my_turn}")
         # Signal once that everything is initialized
         QTimer.singleShot(0, self.boardChanged.emit)
+
+    def send_game_result(self, winner: str, reason: str):
+        # On vérifie que c'est bien nous le gagnant
+        if winner != self._player_color:
+            return  # On ne fait rien si ce n'est pas nous
+
+        if self._socket_client:
+            data = {
+                "match_id": self.match_id,
+                "winner": self._player_color,
+            }
+            print("[WebSocket] Envoi des données de fin de partie :", data)
+            self._socket_client.emit("game_over", data)
     
     @pyqtSlot(str, str)
     def make_move(self, from_square, to_square):
@@ -147,6 +162,7 @@ class WebSocketChessGame(QObject):
     def _position_to_algebraic(self, position):
         """Convert (row, col) position to algebraic notation (e.g. 'e4')"""
         return self._chess_game._position_to_algebraic(position)
+    
     
     @pyqtProperty(list, notify=boardChanged)
     def piece_positions(self):

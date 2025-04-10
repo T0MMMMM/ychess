@@ -6,6 +6,7 @@ import datetime
 
 from flask import json
 from chess_utils.player import Player
+from chess_utils.match import Match
 
 def get_player_by_id(player_id):
     conn = sqlite3.connect("chess_server/database.db")
@@ -99,6 +100,43 @@ def get_elo_by_id(user_id):
     if row:
         return row[0]
     return None
+
+
+def get_match_by_id(match_id):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    
+    # Récupérer les noms des colonnes
+    cursor.execute("PRAGMA table_info(match)")
+    columns = [column[1] for column in cursor.fetchall()]
+    
+    cursor.execute("SELECT * FROM match WHERE id = ?", (match_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        # Créer un dictionnaire à partir du tuple et des noms de colonnes
+        row_dict = dict(zip(columns, row))
+        return Match(
+            id = row_dict.get("id", 0),
+            player1_id=row_dict.get("player1_id", 0),
+            player2_id=row_dict.get("player2_id", 0),
+            winner_id=row_dict.get("winner_id", None),
+            start_time=row_dict.get("start_time", ""),
+            end_time=row_dict.get("end_time", ""),
+            status=row_dict.get("status", "en cours"),
+            moves=json.loads(row_dict.get("moves", "[]"))
+        )
+    return None
+
+
+def update_match_winner(match_id, winner_id):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE match SET winner_id = ?, end_time = ?, status = ? WHERE id = ?", 
+                   (winner_id, datetime.datetime.now(), "terminé", match_id))
+    conn.commit()
+    conn.close()
 
 def create_match(player1_id, player2_id):
     conn = sqlite3.connect("chess_server/database.db")

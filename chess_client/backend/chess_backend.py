@@ -34,12 +34,6 @@ class ChessBackend(QObject):
         self._chess_game = WebSocketChessGame(self.sio)
         
         # Configurer les handlers avant la connexion
-        @self.sio.on('connect')
-        def on_connect():
-            """Gère l'événement de connexion WebSocket."""
-            print("Connecté au serveur WebSocket")
-            if self._user.id != 0:
-                self.sio.emit("register", {'user': self._user.to_dict()})
 
         @self.sio.on('disconnect')
         def on_disconnect():
