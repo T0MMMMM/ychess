@@ -53,18 +53,25 @@ def game_over(data):
     id_winner = match.player1_id if data["winner"] == "white" else match.player2_id
     id_loser = match.player2_id if data["winner"] == "white" else match.player1_id
     update_match_winner(match.id, id_winner)
-    update_elo_player(id_winner, 1)
-    update_elo_player(id_loser, 0)
+    update_elo_players(id_winner, id_loser, 1)
+    update_elo_players(id_loser, id_winner, 0)
 
 
-def update_elo_player(player_id, resultat):
-    win_probabilite = 0.5
-    new_elo = get_elo_by_id(player_id) + 50 * (resultat - win_probabilite)
+def update_elo_players(player_id, opponent_id, resultat):
+    elo_player = get_elo_by_id(player_id)
+    elo_opponent = get_elo_by_id(opponent_id)
+    win_probability = calculate_win_probability(elo_player, elo_opponent)
+
+    new_elo = elo_player + 50 * (resultat - win_probability)
     if resultat == 1:
         add_win_to_user(player_id)
     else:
         add_loss_to_user(player_id)
     update_elo(player_id, new_elo)
+
+def calculate_win_probability(elo_joueur, elo_adversaire, scale=700):
+    probability = 1 / (1 + 10 ** ((elo_adversaire - elo_joueur) / scale))
+    return round(probability, 1)
 
 # -------------------------------- API Routes --------------------------------
 @app.route('/api/login', methods=['POST'])
