@@ -130,6 +130,13 @@ def get_match_by_id(match_id):
     return None
 
 
+def update_elo(player_id, new_elo):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE player SET elo = ? WHERE id = ?", (new_elo, player_id))
+    conn.commit()
+    conn.close()
+
 def update_match_winner(match_id, winner_id):
     conn = sqlite3.connect("chess_server/database.db")
     cursor = conn.cursor()
