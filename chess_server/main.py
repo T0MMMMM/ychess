@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from chess_server.crud import (
     add_move_to_match, create_match, db_login, 
-    get_elo_by_id, get_user_by_id, get_match_by_id, update_match_winner, update_elo
+    get_elo_by_id, get_user_by_id, get_match_by_id, update_match_winner, update_elo, add_win_to_user, add_loss_to_user
 )
 
 app = Flask(__name__)
@@ -53,13 +53,17 @@ def game_over(data):
     id_winner = match.player1_id if data["winner"] == "white" else match.player2_id
     id_loser = match.player2_id if data["winner"] == "white" else match.player1_id
     update_match_winner(match.id, id_winner)
-    update_elo_player(id_winner, 1.0)
-    update_elo_player(id_loser, 0.0)
+    update_elo_player(id_winner, 1)
+    update_elo_player(id_loser, 0)
 
 
 def update_elo_player(player_id, resultat):
     win_probabilite = 0.5
     new_elo = get_elo_by_id(player_id) + 50 * (resultat - win_probabilite)
+    if resultat == 1:
+        add_win_to_user(player_id)
+    else:
+        add_loss_to_user(player_id)
     update_elo(player_id, new_elo)
 
 # -------------------------------- API Routes --------------------------------
@@ -126,6 +130,7 @@ def matchmaking_loop():
     while True:
         time.sleep(5)
         matchmaking()
+
 
 
 if __name__ == '__main__':

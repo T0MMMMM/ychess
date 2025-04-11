@@ -167,3 +167,17 @@ def add_move_to_match(match_id, move):
     cursor.execute("UPDATE match SET moves = ? WHERE id = ?", (json.dumps(moves), match_id))
     conn.commit()
     conn.close()
+
+def add_win_to_user(user_id):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE player SET wins = wins + 1, matches_played = matches_played + 1 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+def add_loss_to_user(user_id):
+    conn = sqlite3.connect("chess_server/database.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE player SET losses = losses + 1, matches_played = matches_played + 1 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
