@@ -48,6 +48,8 @@ def handle_game_over(data):
     print(data["match_id"])
     game_over(data)
 
+# -------------------------------- Game Over Logic --------------------------------
+
 def game_over(data):
     match = get_match_by_id(data["match_id"])
     id_winner = match.player1_id if data["winner"] == "white" else match.player2_id
@@ -70,7 +72,12 @@ def update_elo_players(player_id, opponent_id, resultat):
 
 def calculate_win_probability(elo_joueur, elo_adversaire, scale=700):
     probability = 1 / (1 + 10 ** ((elo_adversaire - elo_joueur) / scale))
+    if probability < 0.1:
+        probability = 0.1
+    elif probability > 0.9:
+        probability = 0.9
     return round(probability, 1)
+
 
 # -------------------------------- API Routes --------------------------------
 @app.route('/api/login', methods=['POST'])
@@ -163,7 +170,7 @@ def show_users_in_file():
 
 def matchmaking_loop():
     while True:
-        time.sleep(5)
+        time.sleep(10)
         show_users_in_file()
         matchmaking()
 
