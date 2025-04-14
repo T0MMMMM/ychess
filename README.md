@@ -56,9 +56,26 @@ Ce projet consiste à développer un **serveur de matchmaking** pour des jeux de
 
 ---
 
-## Comment lancer le serveur
+## Instructions pour lancer le serveur et le client
 
-1. **Créer un environnement virtuel** :
+### Prérequis
+Si vous partez d'un PC sans Python ni dépendances installées, suivez ces étapes pour configurer votre environnement et exécuter le serveur et le client.
+
+---
+
+### Lancer le serveur
+
+1. **Installer Python** :
+   - Téléchargez et installez Python depuis [python.org](https://www.python.org/downloads/).
+   - Assurez-vous de cocher l'option "Add Python to PATH" lors de l'installation.
+
+2. **Cloner le projet** :
+   ```bash
+   git clone <URL_DU_REPO>
+   cd ychess
+   ```
+
+3. **Créer un environnement virtuel** :
    - Sur **Windows** :
      ```bash
      python -m venv venv
@@ -68,7 +85,7 @@ Ce projet consiste à développer un **serveur de matchmaking** pour des jeux de
      python3 -m venv venv
      ```
 
-2. **Activer l'environnement virtuel** :
+4. **Activer l'environnement virtuel** :
    - Sur **Windows** :
      ```bash
      .\venv\Scripts\activate
@@ -78,19 +95,37 @@ Ce projet consiste à développer un **serveur de matchmaking** pour des jeux de
      source venv/bin/activate
      ```
 
-3. **Installer les dépendances** :
+5. **Installer les dépendances** :
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Lancer le serveur** :
+6. **Lancer le serveur** :
    ```bash
    python -m chess_server.main
    ```
 
-## Comment lancer le client
+---
 
-1. Naviguez dans le dossier `dist` où se trouve l'exécutable du client.
-2. Double-cliquez sur le fichier `chess_client.exe` pour lancer l'application client.
+### Lancer le client
 
-Assurez-vous que le serveur est en cours d'exécution avant de lancer le client.
+1. **Télécharger l'exécutable** :
+   - Si vous êtes sur **Windows**, l'exécutable du client est déjà généré et se trouve dans le dossier `dist`.
+   - Si vous êtes sur **Linux**, vous devez générer un exécutable spécifique (voir ci-dessous).
+
+2. **Exécuter le client** :
+   - Sur **Windows** :
+     - Naviguez dans le dossier `dist`.
+     - Double-cliquez sur `chess_client.exe` pour lancer l'application.
+   - Sur **Linux** :
+     - Générez un exécutable avec PyInstaller :
+       ```bash
+       pip install pyinstaller
+       pyinstaller --onefile --noconsole -n chess_client chess_client/main.py
+       ```
+     - L'exécutable sera généré dans le dossier `dist`. Exécutez-le avec :
+       ```bash
+       ./dist/chess_client
+       ```
+
+3. **Assurez-vous que le serveur est en cours d'exécution avant de lancer le client.**
