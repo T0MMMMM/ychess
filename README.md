@@ -55,3 +55,42 @@ Ce projet consiste à développer un **serveur de matchmaking** pour des jeux de
   - [ ] CLI avec IA
 
 ---
+
+## Comment lancer le serveur
+
+1. **Créer un environnement virtuel** :
+   - Sur **Windows** :
+     ```bash
+     python -m venv venv
+     ```
+   - Sur **Linux** :
+     ```bash
+     python3 -m venv venv
+     ```
+
+2. **Activer l'environnement virtuel** :
+   - Sur **Windows** :
+     ```bash
+     .\venv\Scripts\activate
+     ```
+   - Sur **Linux** :
+     ```bash
+     source venv/bin/activate
+     ```
+
+3. **Installer les dépendances** :
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Lancer le serveur** :
+   ```bash
+   python -m chess_server.main
+   ```
+
+## Comment lancer le client
+
+1. Naviguez dans le dossier `dist` où se trouve l'exécutable du client.
+2. Double-cliquez sur le fichier `chess_client.exe` pour lancer l'application client.
+
+Assurez-vous que le serveur est en cours d'exécution avant de lancer le client.

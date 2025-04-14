@@ -176,4 +176,7 @@ def matchmaking_loop():
 
 if __name__ == '__main__':
     threading.Thread(target=matchmaking_loop, daemon=True).start()
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    try:
+        socketio.run(app, host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    except Exception as e:
+        logging.error("Server failed to start", exc_info=e)
